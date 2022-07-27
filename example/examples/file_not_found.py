@@ -1,0 +1,1 @@
+open('neko_ha_totemo_kawaii', 'r')
