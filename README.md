@@ -50,7 +50,7 @@ Traceback (most recent call last):
 TypeError: can only concatenate str (not "int") to str
 上に表示されているのが本来のエラーメッセージです。エラーについて調べる場合は、上のエラーメッセージで検索して下さい。
 【型に関するエラー(TypeError)】
-ファイル「E:\scripts\etupem\example\examples\concatenate_error.py」の 1行目でエラーが発生しました。
+ファイル「E:\scripts\type_error.py」の 1行目でエラーが発生しました。
     "123" + 456
 文字列に 整数(int型)を結合することはできません。
 ```

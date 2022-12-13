@@ -93,6 +93,10 @@ def _error_message(error_class, msg):
         return '内包表記のターゲットをカッコで囲むのを忘れていませんか？'
     if 'invalid non-printable character U+3000' == msg:
         return '全角空白が使われています。半角空白に直してください。'
+    if m := re.fullmatch(r"invalid character '([（）’”＋－＊／％：＜＞＝！])' \(([^\)]+)\)", msg):
+        return f'全角の {m.group(1)} が使われています。英語入力状態で書き直してください。'
+    if m := re.fullmatch(r"invalid character '(.)' \(([^\)]+)\)", msg):
+        return f'不正な文字 {m.group(1)} が使われています。'
     # IndentationError, TabError
     if 'unexpected indent' == msg:
         return 'インデントが入るべきでない場所に入ってしまっています。'
@@ -131,7 +135,7 @@ def _error_message(error_class, msg):
     if m := re.fullmatch(r"([^(]+)\(\) got an unexpected keyword argument '([^']+)'", msg):
         return f'{m.group(1)}() に \'{m.group(2)}\' という未対応のキーワード引数が与えられています。'
     # ValueError
-    if m := re.fullmatch(r'invalid literal for int\(\) with base (\d+): (\'[^\']+\')', msg):
+    if m := re.fullmatch(r'invalid literal for int\(\) with base (\d+): (\'[^\']*\')', msg):
         return f'文字列 {m.group(2)} は、{m.group(1)}進法の数値として不適切です。'
     if m := re.fullmatch(r'could not convert string to float: (\'[^\']+\')', msg):
         return f'文字列 {m.group(1)} を float 型に変換することはできません。'

@@ -1,6 +1,7 @@
 import sys
 import os
 import re
+import traceback
 import locale
 import subprocess
 import linecache
@@ -25,7 +26,7 @@ def python_command():
     return 'python' if cp.returncode else 'python3'
 
 
-def run(args):
+def run_by_subprocess(args):
     python = python_command()
     cp = subprocess.Popen([python] + args,
                           encoding=locale.getpreferredencoding(),
@@ -41,6 +42,28 @@ def run(args):
             break
 
     return err if cp.returncode else ''
+
+
+def run_by_exec(filename, script):
+    try:
+        exec(script)
+        return ""
+    except Exception:
+        t = traceback.format_exc()
+        t = t.replace('  File "<string>",', f'  File "{filename}",')
+        t = re.sub(r'  File "[^"]*exec\.py", line \d+, in run_by_exec\n *exec\(script\)\n', "", t)
+        print(t, file=sys.stderr, end='')
+        return t
+
+
+def run(args):
+    filename = args[0]
+    with open(filename, "rb") as f:
+        script = f.read()
+    if b"input(" in script:
+        return run_by_exec(filename, script)
+    else:
+        return run_by_subprocess(args)
 
 
 def analyze(err):
