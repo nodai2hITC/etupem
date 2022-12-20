@@ -77,6 +77,8 @@ def _error_message(error_class, msg):
         return '文法が正しくありません。コンマ「,」を忘れていませんか？'
     if "invalid syntax. Maybe you meant '==' or ':=' instead of '='?" == msg:
         return '文法が正しくありません。「=」ではなく「==」や「:=」ではありませんか？'
+    if "cannot assign to expression here. Maybe you meant '==' instead of '='?" == msg:
+        return '式に代入することはできません。「=」ではなく「==」ではありませんか？'
     if "cannot assign to attribute here. Maybe you meant '==' instead of '='?" == msg:
         return 'ここで属性に代入することはできません。「=」ではなく「==」ではありませんか？'
     if 'EOL while scanning string literal' == msg:
