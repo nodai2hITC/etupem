@@ -5,13 +5,13 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setuptools.setup(
     name='etupem',
-    version='0.2.1',
+    version='0.3.0',
     license='MIT',
     description='Easy To Understand Python Error Message',
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=['etupem'],
-    install_requires=['colorama'],
+    install_requires=['colorama>=0.4.6'],
     entry_points={'console_scripts': ['pythonja=etupem.ja:runner']},
     url='https://github.com/nodai2hITC/etupem/',
     author='nodai2hITC',

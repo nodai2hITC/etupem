@@ -6,11 +6,11 @@ from colorama import Fore, Back, Style
 
 
 def runner():
-    colorama.init()
-    argument_error = '使い方： etupemja script.py'
+    etupem.exec.init()
+    argument_error = '使い方： pythonja [option] script.py'
     file_not_found = 'ファイル「%s」が見つかりませんでした。ファイル名を確認してください。'
-    etupem.exec.check(argument_error, file_not_found)
-    err = etupem.exec.run(sys.argv[1:])
+    mode = etupem.exec.check(argument_error, file_not_found)
+    err = etupem.exec.run(mode, sys.argv[1:])
     if not err:
         sys.exit()
     print_error(err)
@@ -31,15 +31,16 @@ def print_error(err):
           + Fore.RESET + Back.RESET)
 
     # Print location where the error occurrd
-    if filename[0] == '<':
-        print(Style.BRIGHT + filename + Style.NORMAL + ' の ', end='')
-    else:
-        print('ファイル「' + Style.BRIGHT + filename + Style.NORMAL + '」の ', end='')
-    print(f'{Style.BRIGHT}{lineno}{Style.NORMAL}行目でエラーが発生しました。{Style.RESET_ALL}')
-    print(Fore.LIGHTGREEN_EX + script + Fore.RESET, end='')
+    if filename != '':
+        if filename[0] == '<':
+            print(Style.BRIGHT + filename + Style.NORMAL + ' の ', end='')
+        else:
+            print('ファイル「' + Style.BRIGHT + filename + Style.NORMAL + '」の ', end='')
+        print(f'{Style.BRIGHT}{lineno}{Style.NORMAL}行目でエラーが発生しました。{Style.RESET_ALL}')
+    etupem.exec.print_script(script)
 
     # Print error message
-    print(_error_message(class_, msg))
+    print(_error_message(class_, msg, script))
 
 
 def _error_type(error_class):
@@ -61,7 +62,7 @@ def _error_type(error_class):
         return f'【エラー({error_class})】'
 
 
-def _error_message(error_class, msg):
+def _error_message(error_class, msg, script):
     # SyntaxError
     if 'invalid syntax' == msg:
         return '文法が正しくありません。入力ミス等が無いか確認してください。'
@@ -76,11 +77,11 @@ def _error_message(error_class, msg):
     if 'invalid syntax. Perhaps you forgot a comma?' == msg:
         return '文法が正しくありません。コンマ「,」を忘れていませんか？'
     if "invalid syntax. Maybe you meant '==' or ':=' instead of '='?" == msg:
-        return '文法が正しくありません。「=」ではなく「==」や「:=」ではありませんか？'
+        return 'ここで代入することはできません。「=」ではなく「==」や「:=」ではありませんか？'
     if "cannot assign to expression here. Maybe you meant '==' instead of '='?" == msg:
         return '式に代入することはできません。「=」ではなく「==」ではありませんか？'
     if "cannot assign to attribute here. Maybe you meant '==' instead of '='?" == msg:
-        return 'ここで属性に代入することはできません。「=」ではなく「==」ではありませんか？'
+        return 'ここで代入することはできません。「=」ではなく「==」ではありませんか？'
     if 'EOL while scanning string literal' == msg:
         return '文字列が閉じられていません。クォートを忘れていないか確認してください。'
     if 'unexpected EOF while parsing' == msg:
@@ -99,6 +100,8 @@ def _error_message(error_class, msg):
         return f'全角の {m.group(1)} が使われています。英語入力状態で書き直してください。'
     if m := re.fullmatch(r"invalid character '(.)' \(([^\)]+)\)", msg):
         return f'不正な文字 {m.group(1)} が使われています。'
+    if "Did you mean to use 'from ... import ...' instead?" == msg:
+        return 'from ... import ... と書くべきところを、import ... from ... と書いてしまっていませんか？'
     # IndentationError, TabError
     if 'unexpected indent' == msg:
         return 'インデントが入るべきでない場所に入ってしまっています。'
@@ -119,7 +122,9 @@ def _error_message(error_class, msg):
         return '文字列の範囲外を参照しようとしています。文字列の長さと参照しようとした位置を確認してください。'
     # NameError
     if m := re.fullmatch(r"name '([^\']+)' is not defined. Did you mean: '([^\']+)'\?", msg):
-        return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。「{m.group(2)}」のスペルミスではありませんか？'
+        return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。「{m.group(2)}」の入力ミスではありませんか？'
+    if m := re.fullmatch(r"name '([^\']+)' is not defined. Did you forget to import '([^\']+)'\?", msg):
+        return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。import {m.group(2)} を忘れていませんか？'
     if m := re.fullmatch(r"name '([^\']+)' is not defined", msg):
         return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。スペルミスや、大文字小文字の打ち間違い等をしていないか確認してください。'
     # TypeError
@@ -136,9 +141,17 @@ def _error_message(error_class, msg):
         return f'{m.group(1)}() は引数（位置引数）を {m.group(2)}～{m.group(3)} 個しか受け取りませんが、{m.group(4)} 個の引数が与えられています。'
     if m := re.fullmatch(r"([^(]+)\(\) got an unexpected keyword argument '([^']+)'", msg):
         return f'{m.group(1)}() に \'{m.group(2)}\' という未対応のキーワード引数が与えられています。'
+    if m := re.fullmatch(r"'([^']+)' object is not callable", msg):
+        if m2 := re.search(r"(input|print)\(", script):
+            return f'{m2.group(1)}関数が上書きされてしまっているため呼び出せません。この行以前で {m2.group(1)} という名前の変数を使ってしまっていませんか？'
+        else:
+            return f'{_data_type(m.group(1), "")}のデータは () を付けて呼び出すことはできません。'
     # ValueError
     if m := re.fullmatch(r'invalid literal for int\(\) with base (\d+): (\'[^\']*\')', msg):
-        return f'文字列 {m.group(2)} は、{m.group(1)}進法の数値として不適切です。'
+        if m.group(1) == '10':
+            return f'文字列 {m.group(2)} は、int型（整数）に変換することができません。'
+        else:
+            return f'文字列 {m.group(2)} は、{m.group(1)}進法の整数として不適切です。'
     if m := re.fullmatch(r'could not convert string to float: (\'[^\']+\')', msg):
         return f'文字列 {m.group(1)} を float 型に変換することはできません。'
     # AttributeError
@@ -152,13 +165,15 @@ def _error_message(error_class, msg):
     # ModuleNotFoundError, ImportError
     if m := re.fullmatch(r"No module named '([^\']+)'", msg):
         return f'モジュール「{m.group(1)}」が見つかりません。このモジュールがインストールされているか、スペルミスをしていないか確認してください。'
+    if m := re.match(r"^cannot import name '([^\']+)' from '([^\']+)'. Did you mean: '([^\']+)'?", msg):
+        return f'モジュール「{m.group(2)}」に、「{m.group(1)}」という名前のオブジェクトが見つかりません。「{m.group(3)}」のスペルミスではありませんか？'
     if m := re.match(r"^cannot import name '([^\']+)' from '([^\']+)'", msg):
         return f'モジュール「{m.group(2)}」に、「{m.group(1)}」という名前のオブジェクトが見つかりません。スペルミスをしていないか等確認してください。'
     # FileNotFoundError
     if m := re.fullmatch(r"\[Errno 2\] No such file or directory: '([^\']+)'", msg):
         return f'ファイル「{m.group(1)}」が見つかりません。スペルミス等をしていないか確認してください。'
     # ZeroDivisionError
-    if 'division by zero' == msg:
+    if m := re.fullmatch(r"(float )?division by zero", msg):
         return '0 で割ることはできません。除数（割る数）が予期せず 0 になっていないか確認してください。'
     # その他のエラー
     return msg
