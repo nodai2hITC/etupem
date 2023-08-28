@@ -3,6 +3,7 @@ import os
 import re
 import traceback
 import locale
+import asyncio
 import subprocess
 import linecache
 import unicodedata
@@ -14,17 +15,18 @@ def init():
 
 
 def check(argument_error, file_not_found):
-    if len(sys.argv) < 2:
+    del sys.argv[0]
+    mode = 'async'
+    if sys.argv[0] in ['--exec', '--subp', '--async']:
+        mode = sys.argv[0][2:]
+        del sys.argv[0]
+
+    if len(sys.argv) == 0 or sys.argv == ['-c']:
         print(argument_error)
         sys.exit()
 
-    mode = 'auto'
-    if sys.argv[1] in ['--auto', '--exec', '--subp']:
-        mode = sys.argv[1][2:]
-        del sys.argv[1]
-
-    path = sys.argv[1]
-    if not os.path.isfile(path):
+    path = sys.argv[0]
+    if not os.path.isfile(path) and path != '-c':
         print(file_not_found % path)
         sys.exit()
 
@@ -32,9 +34,41 @@ def check(argument_error, file_not_found):
 
 
 def python_command():
+    if sys.executable:
+        return sys.executable
+
     cp = subprocess.run(['python3', '--version'],
-                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return 'python' if cp.returncode else 'python3'
+
+
+def run_by_asyncio(args):
+    return asyncio.run(_run_by_asyncio(args))
+
+async def _run_by_asyncio(args):
+    err = ''
+    cp = await asyncio.create_subprocess_exec(
+        python_command(),
+        *args,
+        stderr=asyncio.subprocess.PIPE
+    )
+
+    while True:
+        if cp.stderr.at_eof():
+            break
+
+        bin = (await cp.stderr.read(4096))
+        try:
+            line = bin.decode('utf-8')
+        except UnicodeDecodeError:
+            line = bin.decode(locale.getpreferredencoding())
+        if line:
+            print(line, file=sys.stderr, end='', flush=True)
+            err += line
+        await asyncio.sleep(0.05)
+
+    await cp.communicate()
+    return err if cp.returncode else ''
 
 
 def run_by_subprocess(args):
@@ -70,13 +104,20 @@ def run_by_exec(filename, script):
 
 
 def run(mode, args):
-    filename = args[0]
-    with open(filename, "rb") as f:
-        script = f.read()
-    if mode == 'exec' or mode == 'auto' and b"input(" in script:
-        return run_by_exec(filename, script)
-    else:
+    if mode == 'async':
+        return run_by_asyncio(args)
+    elif mode == 'subp':
         return run_by_subprocess(args)
+    else:
+        filename = args[0]
+        if filename == '-c':
+            script = args[1]
+            del args[1]
+            filename = '<string>'
+        else:
+            with open(filename, "rb") as f:
+                script = f.read()
+        return run_by_exec(filename, script)
 
 
 def analyze(err):

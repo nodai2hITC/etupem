@@ -10,7 +10,7 @@ def runner():
     argument_error = '使い方： pythonja [option] script.py'
     file_not_found = 'ファイル「%s」が見つかりませんでした。ファイル名を確認してください。'
     mode = etupem.exec.check(argument_error, file_not_found)
-    err = etupem.exec.run(mode, sys.argv[1:])
+    err = etupem.exec.run(mode, sys.argv)
     if not err:
         sys.exit()
     print_error(err)

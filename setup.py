@@ -5,9 +5,9 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setuptools.setup(
     name='etupem',
-    version='0.3.0',
+    version='0.4.0',
     license='MIT',
-    description='Easy To Understand Python Error Message',
+    description='make Easy To Understand Python Error Message for those who are not good at English.',
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=['etupem'],
