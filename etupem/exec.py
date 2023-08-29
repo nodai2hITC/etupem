@@ -17,16 +17,21 @@ def init():
 def check(argument_error, file_not_found):
     del sys.argv[0]
     mode = 'async'
-    if sys.argv[0] in ['--exec', '--subp', '--async']:
+    if sys.argv and sys.argv[0] in ['--exec', '--subp', '--async']:
         mode = sys.argv[0][2:]
         del sys.argv[0]
 
-    if len(sys.argv) == 0 or sys.argv == ['-c']:
+    if (len(sys.argv) == 0 or
+        sys.argv == ['-c'] or
+        sys.argv == ['-h'] or
+        sys.argv == ['--help']):
         print(argument_error)
         sys.exit()
 
     path = sys.argv[0]
-    if not os.path.isfile(path) and path != '-c':
+    if (not os.path.isfile(path) and
+        not os.path.isfile(path + '/__main__.py') and
+        path != '-c'):
         print(file_not_found % path)
         sys.exit()
 
@@ -65,7 +70,7 @@ async def _run_by_asyncio(args):
         if line:
             print(line, file=sys.stderr, end='', flush=True)
             err += line
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.01)
 
     await cp.communicate()
     return err if cp.returncode else ''

@@ -7,7 +7,19 @@ from colorama import Fore, Back, Style
 
 def runner():
     etupem.exec.init()
-    argument_error = '使い方： pythonja [option] script.py'
+    argument_error = '''\
+使い方： pythonja [option] script.py
+  script.py を実行し、エラーが発生した場合はエラーを日本語で表示します。
+  python -m etupem ja [option] script.py でも実行できます。
+
+[option]
+  --async : asyncio を用いて実行します。（デフォルト）
+            特に問題なければこれを利用してください。
+  --subp  : subprocess を用いて実行します。
+            環境によっては input() がうまく動作しません。
+  --exec  : exec を用いて実行します。
+            起動が高速ですが、詳細なエラーメッセージが表示されない場合があります。
+'''
     file_not_found = 'ファイル「%s」が見つかりませんでした。ファイル名を確認してください。'
     mode = etupem.exec.check(argument_error, file_not_found)
     err = etupem.exec.run(mode, sys.argv)
