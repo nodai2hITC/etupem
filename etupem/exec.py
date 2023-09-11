@@ -171,3 +171,28 @@ def print_script(script):
         print(Fore.RED + last_line + Fore.RESET)
     else:
         print(Fore.LIGHTGREEN_EX + script + Fore.RESET, end='')
+
+
+def diff(text1, text2):
+    b1 = Fore.LIGHTYELLOW_EX
+    e1 = Fore.RESET
+    b2 = Back.BLUE
+    e2 = Back.RESET
+    text1c = b1 + text1 + e1
+    text2c = b1 + text2 + e1
+    d = len(text1) - len(text2)
+    if d == -1:
+        for i in range(len(text2)):
+            if text1 == text2[0:i] + text2[i+1:]:
+                text2c = b1 + text2[0:i] + b2 + text2[i] + e2 + text2[i+1:] + e1
+    elif d == 0:
+        for i in range(len(text1)):
+            if text1[0:i] + text1[i+1:] == text2[0:i] + text2[i+1:]:
+                text1c = b1 + text1[0:i] + b2 + text1[i] + e2 + text1[i+1:] + e1
+                text2c = b1 + text2[0:i] + b2 + text2[i] + e2 + text2[i+1:] + e1
+    elif d == 1:
+        for i in range(len(text1)):
+            if text1[0:i] + text1[i+1:] == text2:
+                text1c = b1 + text1[0:i] + b2 + text1[i] + e2 + text1[i+1:] + e1
+
+    return text1c, text2c

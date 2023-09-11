@@ -114,6 +114,8 @@ def _error_message(error_class, msg, script):
         return f'不正な文字 {m.group(1)} が使われています。'
     if "Did you mean to use 'from ... import ...' instead?" == msg:
         return 'from ... import ... と書くべきところを、import ... from ... と書いてしまっていませんか？'
+    if 'leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers' == msg:
+        return '数値の前に 0 を入れてはいけません。'
     # IndentationError, TabError
     if 'unexpected indent' == msg:
         return 'インデントが入るべきでない場所に入ってしまっています。'
@@ -134,7 +136,8 @@ def _error_message(error_class, msg, script):
         return '文字列の範囲外を参照しようとしています。文字列の長さと参照しようとした位置を確認してください。'
     # NameError
     if m := re.fullmatch(r"name '([^\']+)' is not defined. Did you mean: '([^\']+)'\?", msg):
-        return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。「{m.group(2)}」の入力ミスではありませんか？'
+        text1, text2 = etupem.exec.diff(m.group(1), m.group(2))
+        return f'「{text1}」という名前の変数などは見つかりませんでした。「{text2}」の入力ミスではありませんか？'
     if m := re.fullmatch(r"name '([^\']+)' is not defined. Did you forget to import '([^\']+)'\?", msg):
         return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。import {m.group(2)} を忘れていませんか？'
     if m := re.fullmatch(r"name '([^\']+)' is not defined", msg):
@@ -144,7 +147,9 @@ def _error_message(error_class, msg, script):
         return f'文字列に {_data_type(m.group(1), "のデータ")}を結合することはできません。'
     if m := re.fullmatch(r"unsupported operand type\(s\) for \+: '([^\']+)' and '([^\']+)'", msg):
         return f'{_data_type(m.group(1))}に {_data_type(m.group(2), "のデータ")}を足すことはできません。'
-    if m := re.fullmatch(r"([^(]+)\(\) missing (\d+) required positional arguments: (.+)", msg):
+    if m := re.fullmatch(r"unsupported operand type\(s\) for ([^:]+): '([^\']+)' and '([^\']+)'", msg):
+        return f'{_data_type(m.group(2), "のデータ")}と {_data_type(m.group(3), "のデータ")}の間で、{m.group(1)} による計算はできません。'
+    if m := re.fullmatch(r"([^(]+)\(\) missing (\d+) required positional arguments?: (.+)", msg):
         args = m.group(3).replace(', and ', ', ').replace(' and ', ', ')
         return f'{m.group(1)}() に必要な引数が {m.group(2)} 個（{args}）足りません。'
     if m := re.fullmatch(r"([^(]+)\(\) takes (\d+) positional arguments but (\d+) were given", msg):
@@ -158,6 +163,20 @@ def _error_message(error_class, msg, script):
             return f'{m2.group(1)}関数が上書きされてしまっているため呼び出せません。この行以前で {m2.group(1)} という名前の変数を使ってしまっていませんか？'
         else:
             return f'{_data_type(m.group(1), "")}のデータは () を付けて呼び出すことはできません。'
+    if m := re.fullmatch(r"'([^']+)' object is not subscriptable", msg):
+        if m.group(1) == 'builtin_function_or_method':
+            return '丸カッコ ( ) ではなく 角カッコ [ ] を使ってしまっていませんか？'
+        else:
+            return f'{_data_type(m.group(1), "のデータ")} には [ ] は使用できません。'
+    if m := re.fullmatch(r"'([^']+)' object is not iterable", msg):
+        if m.group(1) == 'int' and re.match(r'\s*for ', script):
+            return 'range( ) を忘れていませんか？'
+        else:
+            return f'{_data_type(m.group(1), "のデータ")} は繰り返しに使用できません。'
+    if m := re.fullmatch(r"object of type '([^']+)' has no len\(\)", msg):
+        return f'{_data_type(m.group(1), "のデータ")} には len( ) は使用できません。'
+    if m := re.fullmatch(r"'([^']+)' not supported between instances of '([^']+)' and '([^']+)'", msg):
+        return f'{_data_type(m.group(2), "のデータ")}と{_data_type(m.group(3), "のデータ")}の間で、{m.group(1)} による比較はできません。'
     # ValueError
     if m := re.fullmatch(r'invalid literal for int\(\) with base (\d+): (\'[^\']*\')', msg):
         if m.group(1) == '10':
@@ -197,9 +216,15 @@ def _data_type(name, suffix=''):
         'int': '整数',
         'float': '数値',
         'list': 'リスト',
-        'tuple': 'タプル'
+        'tuple': 'タプル',
+        'builtin_function_or_method': '関数／メソッド',
+        'function': '関数',
+        'NoneType': 'None'
     }
     if name in types:
-        return f'{types[name]}({name}型)'
+        if len(name) > 5:
+            return f'{types[name]}'
+        else:
+            return f'{types[name]}({name}型)'
     else:
         return f'{name}型{suffix}'
