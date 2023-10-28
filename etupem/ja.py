@@ -52,7 +52,7 @@ def print_error(err):
     etupem.exec.print_script(script)
 
     # Print error message
-    print(_error_message(class_, msg, script))
+    print(_error_message(class_, msg, script, lineno))
 
 
 def _error_type(error_class):
@@ -74,9 +74,11 @@ def _error_type(error_class):
         return f'【エラー({error_class})】'
 
 
-def _error_message(error_class, msg, script):
+def _error_message(error_class, msg, script, lineno):
     # SyntaxError
     if 'invalid syntax' == msg:
+        if re.match(r'\s*for\s+', script) and ' in ' not in script:
+            return '文法が正しくありません。in を忘れていませんか？'
         return '文法が正しくありません。入力ミス等が無いか確認してください。'
     if m := re.fullmatch(r"'([^\']+)' was never closed", msg):
         return f'「{m.group(1)}」を閉じ忘れています。'
@@ -85,15 +87,17 @@ def _error_message(error_class, msg, script):
     if m := re.fullmatch(r"EOF while scanning (?:triple-quoted )?string literal", msg):
         return f'文字列が閉じられていません。クォートを忘れていませんか？'
     if "expected ':'" == msg:
+        if re.match(r'\s*else\s+.+?[=<>].+?\:', script):
+            return 'else の後に条件式を書くことはできません。elif を使うか、あるいは条件式を消す必要があります。'
         return 'コロン「:」を忘れています。'
     if 'invalid syntax. Perhaps you forgot a comma?' == msg:
         return '文法が正しくありません。コンマ「,」を忘れていませんか？'
     if "invalid syntax. Maybe you meant '==' or ':=' instead of '='?" == msg:
-        return 'ここで代入することはできません。「=」ではなく「==」や「:=」ではありませんか？'
+        return '文法が正しくありません。「=」ではなく「==」や「:=」ではありませんか？'
     if "cannot assign to expression here. Maybe you meant '==' instead of '='?" == msg:
         return '式に代入することはできません。「=」ではなく「==」ではありませんか？'
     if "cannot assign to attribute here. Maybe you meant '==' instead of '='?" == msg:
-        return 'ここで代入することはできません。「=」ではなく「==」ではありませんか？'
+        return 'ここで属性に代入することはできません。「=」ではなく「==」ではありませんか？'
     if 'EOL while scanning string literal' == msg:
         return '文字列が閉じられていません。クォートを忘れていないか確認してください。'
     if 'unexpected EOF while parsing' == msg:
@@ -116,6 +120,8 @@ def _error_message(error_class, msg, script):
         return 'from ... import ... と書くべきところを、import ... from ... と書いてしまっていませんか？'
     if 'leading zeros in decimal integer literals are not permitted; use an 0o prefix for octal integers' == msg:
         return '数値の前に 0 を入れてはいけません。'
+    if 'invalid decimal literal' == msg:
+        return '不正な数値データです。数字から始まる変数名を使っていたりしませんか？'
     # IndentationError, TabError
     if 'unexpected indent' == msg:
         return 'インデントが入るべきでない場所に入ってしまっています。'
@@ -124,7 +130,7 @@ def _error_message(error_class, msg, script):
     if 'unindent does not match any outer indentation level' == msg:
         return '合わせるべきインデントが合っていません。'
     if m := re.fullmatch(r"expected an indented block after '([^']+)' statement [oi]n line (\d+)", msg):
-        return f'{m.group(2)}行目の {m.group(1)} の後に、インデントがありません。'
+        return f'{m.group(2)}行目の {m.group(1)} の次行（つまり {lineno}行目）に、インデントがありません。'
     if 'inconsistent use of tabs and spaces in indentation' == msg:
         return 'インデントにタブとスペースが混在しています。'
     # IndexError
@@ -141,7 +147,7 @@ def _error_message(error_class, msg, script):
     if m := re.fullmatch(r"name '([^\']+)' is not defined. Did you forget to import '([^\']+)'\?", msg):
         return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。import {m.group(2)} を忘れていませんか？'
     if m := re.fullmatch(r"name '([^\']+)' is not defined", msg):
-        return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。スペルミスや、大文字小文字の打ち間違い等をしていないか確認してください。'
+        return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。クォーテーションを忘れていたり、スペルミスや大文字小文字の打ち間違いをしていないか確認してください。'
     # TypeError
     if m := re.fullmatch(r'can only concatenate str \(not "([^"]+)"\) to str', msg):
         return f'文字列に {_data_type(m.group(1), "のデータ")}を結合することはできません。'
@@ -171,8 +177,7 @@ def _error_message(error_class, msg, script):
     if m := re.fullmatch(r"'([^']+)' object is not iterable", msg):
         if m.group(1) == 'int' and re.match(r'\s*for ', script):
             return 'range( ) を忘れていませんか？'
-        else:
-            return f'{_data_type(m.group(1), "のデータ")} は繰り返しに使用できません。'
+        return f'{_data_type(m.group(1), "のデータ")} は繰り返しに使用できません。'
     if m := re.fullmatch(r"object of type '([^']+)' has no len\(\)", msg):
         return f'{_data_type(m.group(1), "のデータ")} には len( ) は使用できません。'
     if m := re.fullmatch(r"'([^']+)' not supported between instances of '([^']+)' and '([^']+)'", msg):
@@ -180,7 +185,7 @@ def _error_message(error_class, msg, script):
     # ValueError
     if m := re.fullmatch(r'invalid literal for int\(\) with base (\d+): (\'[^\']*\')', msg):
         if m.group(1) == '10':
-            return f'文字列 {m.group(2)} は、int型（整数）に変換することができません。'
+            return f'文字列 {m.group(2)} は、整数として不正なので int型（整数）に変換することができません。'
         else:
             return f'文字列 {m.group(2)} は、{m.group(1)}進法の整数として不適切です。'
     if m := re.fullmatch(r'could not convert string to float: (\'[^\']+\')', msg):
