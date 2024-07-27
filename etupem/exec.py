@@ -6,7 +6,6 @@ import locale
 import asyncio
 import subprocess
 import linecache
-import unicodedata
 import colorama
 from colorama import Fore, Back, Style
 
@@ -160,14 +159,7 @@ def print_script(script):
     lines = script.splitlines()
     if len(lines) > 1 and re.fullmatch(r"[ \t\~\^]+", lines[-1]):
         print(Fore.LIGHTGREEN_EX + '\n'.join(lines[0:-1]) + Fore.RESET)
-        last_line = ''
-        for i in range(len(lines[-1])):
-            char = lines[-2][i] if i < len(lines[-2]) else ' '
-            if unicodedata.east_asian_width(char) in ['F', 'W', 'A']:
-                last_line += lines[-1][i] * 2
-            else:
-                last_line += lines[-1][i]
-        last_line = re.sub(r"(\^+)", Fore.LIGHTYELLOW_EX + '\\1' + Fore.RED, last_line)
+        last_line = re.sub(r"(\^+)", Fore.LIGHTYELLOW_EX + '\\1' + Fore.RED, lines[-1])
         print(Fore.RED + last_line + Fore.RESET)
     else:
         print(Fore.LIGHTGREEN_EX + script + Fore.RESET, end='')

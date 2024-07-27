@@ -148,6 +148,11 @@ def _error_message(error_class, msg, script, lineno):
         return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。import {m.group(2)} を忘れていませんか？'
     if m := re.fullmatch(r"name '([^\']+)' is not defined", msg):
         return f'「{m.group(1)}」という名前の変数などは見つかりませんでした。クォーテーションを忘れていたり、スペルミスや大文字小文字の打ち間違いをしていないか確認してください。'
+    # UnboundLocalError
+    if m := re.fullmatch(r"local variable '([^\']+)' referenced before assignment", msg):
+        return f'関数内でまだ定義されていない「{m.group(1)}」という名前のローカル変数が使われています。'
+    if m := re.fullmatch(r"cannot access local variable '([^\']+)' where it is not associated with a value", msg):
+        return f'関数内でまだ定義されていない「{m.group(1)}」という名前のローカル変数が使われています。'
     # TypeError
     if m := re.fullmatch(r'can only concatenate str \(not "([^"]+)"\) to str', msg):
         return f'文字列に {_data_type(m.group(1), "のデータ")}を結合することはできません。'
